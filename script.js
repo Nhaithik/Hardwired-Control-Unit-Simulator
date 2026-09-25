@@ -7,10 +7,9 @@ const INSTRUCTIONS = {
   JMP:   { opcode: '0101', raw: '0101 0000 0101 0000', line: 'q_JMP', name: 'JMP' }
 };
 
-let step = 0; // Sequence Counter step (0 to 5)
+let step = 0;
 let autoInterval = null;
 
-// DOM Elements
 const instSelect = document.getElementById('instSelect');
 const rawIrDisplay = document.getElementById('rawIrDisplay');
 const scDisplay = document.getElementById('scDisplay');
@@ -19,7 +18,6 @@ const stepBtn = document.getElementById('stepBtn');
 const runBtn = document.getElementById('runBtn');
 const resetBtn = document.getElementById('resetBtn');
 
-// All Control Signal IDs
 const ALL_SIGNALS = [
   'sig_PC_out', 'sig_PC_inc', 'sig_PC_load', 'sig_MAR_in',
   'sig_MEM_read', 'sig_MEM_write', 'sig_MDR_out', 'sig_IR_in',
@@ -40,21 +38,17 @@ function logMessage(timing, microOp, detail) {
   logTerminal.scrollTop = logTerminal.scrollHeight;
 }
 
-
 function updateSimulation() {
   const currentInst = INSTRUCTIONS[instSelect.value];
   rawIrDisplay.textContent = currentInst.raw;
 
-  // Update Sequence Counter string display
   const binSC = step.toString(2).padStart(3, '0');
   scDisplay.textContent = `${binSC} (${step})`;
 
-  // Update Timing Indicators (T0-T5)
   for (let i = 0; i <= 5; i++) {
     document.getElementById(`t${i}`).classList.toggle('active', i === step);
   }
 
-  // Update Opcode Decoder lines
   Object.keys(INSTRUCTIONS).forEach(instKey => {
     const item = INSTRUCTIONS[instKey];
     const el = document.getElementById(item.line);
@@ -63,79 +57,95 @@ function updateSimulation() {
     el.querySelector('.state-val').textContent = isActive ? '1 (HIGH)' : '0';
   });
 
-  // Clear previous signals, equations, and diagram elements
+  // Clear previous signals and visuals
   ALL_SIGNALS.forEach(sig => document.getElementById(sig).classList.remove('active'));
   ALL_EQUATIONS.forEach(eq => document.getElementById(eq).classList.remove('active'));
   document.querySelectorAll('.wire').forEach(w => w.classList.remove('active'));
   document.querySelectorAll('.hw-box').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.circuit-wire').forEach(w => w.classList.remove('active'));
+  document.querySelectorAll('.gate-symbol').forEach(g => g.classList.remove('active'));
+  document.querySelectorAll('.circuit-dot').forEach(d => d.classList.remove('active'));
+  document.querySelectorAll('.out-pin-box').forEach(p => p.classList.remove('active'));
 
-  // Active Control Equations, Signals & Diagram highlights
   let activeSignals = [];
   let activeEqs = [];
   let activeWires = [];
   let activeBlocks = [];
+  let activeCircuitWires = [];
+  let activeGates = [];
+  let activePins = [];
   let microOp = "";
   let detail = "";
 
   if (step === 0) {
-    // T0: MAR <- PC
     activeSignals = ['sig_PC_out', 'sig_MAR_in'];
     activeEqs = ['eq_fetch1'];
     activeWires = ['wire_PC_bus', 'wire_bus_MAR'];
     activeBlocks = ['block_PC', 'block_MAR'];
+    activeCircuitWires.push('rail_T0');
+    activePins.push('pin_box_MAR');
     microOp = "MAR ← PC";
-    detail = "Move contents of Program Counter to Memory Address Register for instruction fetch.";
+    detail = "Transfer address from PC to MAR for instruction fetch.";
   } else if (step === 1) {
-    // T1: IR <- M[MAR], PC <- PC + 1
     activeSignals = ['sig_MEM_read', 'sig_MDR_out', 'sig_IR_in', 'sig_PC_inc'];
     activeEqs = ['eq_fetch2'];
     activeWires = ['wire_MAR_MEM', 'wire_MEM_MDR', 'wire_MDR_bus', 'wire_bus_IR'];
     activeBlocks = ['block_MEM', 'block_MDR', 'block_IR', 'block_PC'];
+    activeCircuitWires.push('rail_T1');
+    activePins.push('pin_box_T1');
     microOp = "IR ← M[MAR], PC ← PC + 1";
-    detail = "Fetch machine code into IR; increment Program Counter to point to next instruction.";
+    detail = "Fetch machine code into IR; increment Program Counter.";
   } else if (step === 2) {
-    // T2: Opcode Decode
     activeEqs = ['eq_decode'];
     activeWires = ['wire_IR_CU'];
     activeBlocks = ['block_IR', 'block_CU'];
     microOp = `Opcode Decoded: ${currentInst.name}`;
     detail = `Opcode bits (${currentInst.opcode}) decoded; line ${currentInst.line.replace('q_', 'q')} driven HIGH.`;
   } else if (step === 3) {
-    // T3: Address fetch or Branch execution
     if (currentInst.name === 'JMP') {
       activeSignals = ['sig_PC_load', 'sig_SC_clear'];
       activeEqs = ['eq_jmp', 'eq_sc_clr'];
       activeWires = ['wire_IR_CU'];
       activeBlocks = ['block_CU', 'block_PC'];
+      activeCircuitWires.push('rail_T3', 'rail_q5', 'tap_q5_jmp', 'tap_t3_jmp', 'wire_gate_PC_load');
+      activeGates.push('gate_AND_JMP');
+      activePins.push('pin_box_PC_load');
       microOp = "PC ← IR[11:0], SC ← 0";
-      detail = "Load target address into PC unconditionally; Reset Sequence Counter.";
+      detail = "Load target address into PC unconditionally; Reset Counter.";
     } else {
       activeSignals = ['sig_MAR_in'];
       activeEqs = ['eq_mem'];
       activeWires = ['wire_bus_MAR'];
       activeBlocks = ['block_MAR'];
+      activeCircuitWires.push('rail_T3');
       microOp = "MAR ← IR[11:0]";
       detail = "Transfer operand address from IR address field to MAR.";
     }
   } else if (step === 4) {
-    // T4: Execute Phase
     activeSignals.push('sig_SC_clear');
     activeEqs.push('eq_sc_clr');
+    activeCircuitWires.push('rail_T4');
 
     if (currentInst.name === 'ADD') {
       activeSignals.push('sig_MEM_read', 'sig_ALU_add', 'sig_AC_load');
       activeEqs.push('eq_alu_add');
       activeWires = ['wire_MAR_MEM', 'wire_MEM_MDR', 'wire_MDR_bus', 'wire_bus_ALU', 'wire_ALU_AC'];
       activeBlocks = ['block_MEM', 'block_MDR', 'block_ALU', 'block_AC'];
+      activeCircuitWires.push('rail_q1', 'tap_T4_add', 'wire_gate_ALU_add', 'tap_add_to_or', 'wire_gate_AC_load');
+      activeGates.push('gate_AND_ADD', 'gate_OR_AC');
+      activePins.push('pin_box_ALU_add', 'pin_box_AC_load');
       microOp = "AC ← AC + M[MAR], SC ← 0";
-      detail = "Read data operand from memory, compute addition via ALU, store sum into AC; reset SC.";
+      detail = "Read data from memory, add via ALU, store in AC; reset SC.";
     } else if (currentInst.name === 'SUB') {
       activeSignals.push('sig_MEM_read', 'sig_ALU_sub', 'sig_AC_load');
       activeEqs.push('eq_alu_sub');
       activeWires = ['wire_MAR_MEM', 'wire_MEM_MDR', 'wire_MDR_bus', 'wire_bus_ALU', 'wire_ALU_AC'];
       activeBlocks = ['block_MEM', 'block_MDR', 'block_ALU', 'block_AC'];
+      activeCircuitWires.push('rail_q2', 'tap_T4_sub', 'wire_gate_ALU_sub', 'tap_sub_to_or', 'wire_gate_AC_load');
+      activeGates.push('gate_AND_SUB', 'gate_OR_AC');
+      activePins.push('pin_box_ALU_sub', 'pin_box_AC_load');
       microOp = "AC ← AC - M[MAR], SC ← 0";
-      detail = "Read data operand from memory, execute subtraction via ALU, store difference into AC; reset SC.";
+      detail = "Read data from memory, subtract via ALU, store in AC; reset SC.";
     } else if (currentInst.name === 'LOAD') {
       activeSignals.push('sig_MEM_read', 'sig_MDR_out', 'sig_AC_load');
       activeEqs.push('eq_load');
@@ -149,11 +159,11 @@ function updateSimulation() {
       activeWires = ['wire_AC_bus', 'wire_MAR_MEM'];
       activeBlocks = ['block_AC', 'block_MEM'];
       microOp = "M[MAR] ← AC, SC ← 0";
-      detail = "Assert MEM_write signal to transfer contents of AC into selected memory cell; reset SC.";
+      detail = "Write AC contents into memory cell; reset SC.";
     }
   }
 
-  // Apply UI highlights for active control lines
+  // Trigger UI Classes
   activeSignals.forEach(sig => {
     const el = document.getElementById(sig);
     if (el) el.classList.add('active');
@@ -162,25 +172,34 @@ function updateSimulation() {
     const el = document.getElementById(eq);
     if (el) el.classList.add('active');
   });
-
-  // Apply SVG datapath highlights & animated wire pulses
-  activeWires.forEach(wireId => {
-    const el = document.getElementById(wireId);
+  activeWires.forEach(w => {
+    const el = document.getElementById(w);
     if (el) el.classList.add('active');
   });
-  activeBlocks.forEach(blockId => {
-    const box = document.querySelector(`#${blockId} .hw-box`);
+  activeBlocks.forEach(b => {
+    const box = document.querySelector(`#${b} .hw-box`);
     if (box) box.classList.add('active');
+  });
+  activeCircuitWires.forEach(w => {
+    const el = document.getElementById(w);
+    if (el) el.classList.add('active');
+  });
+  activeGates.forEach(gId => {
+    const sym = document.querySelector(`#${gId} .gate-symbol`);
+    if (sym) sym.classList.add('active');
+  });
+  activePins.forEach(pId => {
+    const pin = document.getElementById(pId);
+    if (pin) pin.classList.add('active');
   });
 
   if (microOp !== "") {
     logMessage(`T${step}`, microOp, detail);
   }
 }
-// Step clock pulse
+
 function clockPulse() {
   const currentInst = INSTRUCTIONS[instSelect.value];
-  
   if ((currentInst.name === 'JMP' && step >= 3) || step >= 4) {
     step = 0;
   } else {
@@ -189,7 +208,6 @@ function clockPulse() {
   updateSimulation();
 }
 
-// Event Listeners
 stepBtn.addEventListener('click', clockPulse);
 
 instSelect.addEventListener('change', () => {
@@ -221,5 +239,4 @@ runBtn.addEventListener('click', () => {
   }
 });
 
-// Initialize simulation
 updateSimulation();
