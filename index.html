@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hardwired Control Unit Simulator | Roll 2185</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>Hardwired Control Unit Simulator <span class="badge">Topic #5</span></h1>
+      <div class="sub-meta">COA Theory Assignment-II | Roll Number: 2185 (2185 mod 20 = 5)</div>
+    </div>
+    <div class="sub-meta header-right">
+      <span>Architecture: Instruction Decoder + Sequence Counter + Combinational Matrix</span>
+    </div>
+  </header>
+
+  <!-- Control Toolbar -->
+  <section class="controls-bar">
+    <div class="control-group">
+      <label for="instSelect">Instruction:</label>
+      <select id="instSelect">
+        <option value="ADD">ADD [0x2A] (Op: 0001)</option>
+        <option value="SUB">SUB [0x2B] (Op: 0010)</option>
+        <option value="LOAD">LOAD [0x30] (Op: 0011)</option>
+        <option value="STORE">STORE [0x31] (Op: 0100)</option>
+        <option value="JMP">JMP [0x50] (Op: 0101)</option>
+      </select>
+    </div>
+
+    <button id="stepBtn" class="btn-primary">Clock Pulse (Step)</button>
+    <button id="runBtn">Auto Step</button>
+    <button id="resetBtn" class="btn-danger">Reset (T0)</button>
+
+    <div class="control-group counter-container">
+      <label>Sequence Counter (SC):</label>
+      <div id="scDisplay" class="bit-display font-medium">000 (0)</div>
+    </div>
+  </section>
+
+  <!-- Top Grid: Register/Opcode Decoder & Timing/Combinational Matrix -->
+  <div class="grid-container">
+    <!-- Panel 1: Opcode Decoder -->
+    <div class="panel">
+      <div class="panel-header">1. Instruction Register (IR) & Opcode Decoder</div>
+      
+      <div class="register-box">
+        <label>Raw IR Word (16-bit):</label>
+        <div id="rawIrDisplay" class="bit-display">0001 0000 0010 1010</div>
+        <div class="field-split-sub">
+          <span>Opcode Bits [15:12]</span>
+          <span>Address Field [11:0]</span>
+        </div>
+      </div>
+
+      <label>Opcode Decoder Output Lines (q1 to q5):</label>
+      <div class="opcode-lines">
+        <div id="q_ADD" class="line-tag"><span>q1 (ADD):</span> <span class="state-val">0</span></div>
+        <div id="q_SUB" class="line-tag"><span>q2 (SUB):</span> <span class="state-val">0</span></div>
+        <div id="q_LOAD" class="line-tag"><span>q3 (LOAD):</span> <span class="state-val">0</span></div>
+        <div id="q_STORE" class="line-tag"><span>q4 (STORE):</span> <span class="state-val">0</span></div>
+        <div id="q_JMP" class="line-tag"><span>q5 (JMP):</span> <span class="state-val">0</span></div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Sequence Counter & Combinational Logic -->
+    <div class="panel">
+      <div class="panel-header">2. Timing Generator & Hardwired Logic Gates</div>
+
+      <label>Active Timing Signal (3-to-8 Decoder on SC):</label>
+      <div class="timing-sequence">
+        <div id="t0" class="timing-pill active">T0</div>
+        <div id="t1" class="timing-pill">T1</div>
+        <div id="t2" class="timing-pill">T2</div>
+        <div id="t3" class="timing-pill">T3</div>
+        <div id="t4" class="timing-pill">T4</div>
+        <div id="t5" class="timing-pill">T5</div>
+      </div>
+
+      <label>Hardwired Boolean Logic Expressions:</label>
+      <div class="logic-matrix">
+        <div id="eq_fetch1" class="matrix-row"><span>MAR_in = T0</span><span>[FETCH]</span></div>
+        <div id="eq_fetch2" class="matrix-row"><span>MDR_out, IR_in, PC_inc = T1</span><span>[FETCH]</span></div>
+        <div id="eq_decode" class="matrix-row"><span>Decode Opcode = T2</span><span>[DECODE]</span></div>
+        <div id="eq_mem" class="matrix-row"><span>MAR_in = T3 · (ADD + SUB + LOAD + STORE)</span><span>[OPERAND]</span></div>
+        <div id="eq_alu_add" class="matrix-row"><span>AC_load, ALU_add = T4 · ADD</span><span>[EXECUTE]</span></div>
+        <div id="eq_alu_sub" class="matrix-row"><span>AC_load, ALU_sub = T4 · SUB</span><span>[EXECUTE]</span></div>
+        <div id="eq_load" class="matrix-row"><span>AC_load = T4 · LOAD</span><span>[EXECUTE]</span></div>
+        <div id="eq_store" class="matrix-row"><span>MEM_write = T4 · STORE</span><span>[EXECUTE]</span></div>
+        <div id="eq_jmp" class="matrix-row"><span>PC_load = T3 · JMP</span><span>[BRANCH]</span></div>
+        <div id="eq_sc_clr" class="matrix-row"><span>SC_clear = (T3 · JMP) + (T4 · (ADD + SUB + LOAD + STORE))</span><span>[RESET]</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel 3: Datapath Control Bus Signals -->
+  <div class="panel">
+    <div class="panel-header">3. Generated Datapath Control Signals</div>
+    <div class="signal-grid">
+      <div id="sig_PC_out" class="signal-indicator"><div class="led"></div>PC_out</div>
+      <div id="sig_PC_inc" class="signal-indicator"><div class="led"></div>PC_inc</div>
+      <div id="sig_PC_load" class="signal-indicator"><div class="led"></div>PC_load</div>
+      <div id="sig_MAR_in" class="signal-indicator"><div class="led"></div>MAR_in</div>
+      <div id="sig_MEM_read" class="signal-indicator"><div class="led"></div>MEM_read</div>
+      <div id="sig_MEM_write" class="signal-indicator"><div class="led"></div>MEM_write</div>
+      <div id="sig_MDR_out" class="signal-indicator"><div class="led"></div>MDR_out</div>
+      <div id="sig_IR_in" class="signal-indicator"><div class="led"></div>IR_in</div>
+      <div id="sig_ALU_add" class="signal-indicator"><div class="led"></div>ALU_add</div>
+      <div id="sig_ALU_sub" class="signal-indicator"><div class="led"></div>ALU_sub</div>
+      <div id="sig_AC_load" class="signal-indicator"><div class="led"></div>AC_load</div>
+      <div id="sig_SC_clear" class="signal-indicator"><div class="led"></div>SC_clear</div>
+    </div>
+  </div>
+
+  <!-- Panel 4: Micro-Operation Execution Log -->
+  <div class="panel">
+    <div class="panel-header">4. Micro-Operation Execution Console</div>
+    <div id="logTerminal" class="log-terminal">
+      <div class="log-line">
+        <span class="log-time">[System]</span>
+        <span class="log-op">Control unit initialized. Ready at T0.</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
