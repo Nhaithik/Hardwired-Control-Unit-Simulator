@@ -55,6 +55,110 @@
           <span>Address Field [11:0]</span>
         </div>
       </div>
+       <!-- Live Interactive Datapath Diagram -->
+  <div class="panel">
+    <div class="panel-header">Interactive Hardware Datapath & Bus Architecture</div>
+    <div class="diagram-wrapper">
+      <svg id="datapathSvg" viewBox="0 0 1000 320" xmlns="http://www.w3.org/2000/svg">
+        <!-- Definitions for Arrow Markers and Glow Filters -->
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b" />
+          </marker>
+          <marker id="arrow-active" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#22c55e" />
+          </marker>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        <!-- Common Data & Address Bus (Center Highway) -->
+        <rect x="50" y="145" width="900" height="24" rx="4" fill="#0f172a" stroke="#334155" stroke-width="2" />
+        <text x="500" y="161" fill="#64748b" font-size="11" font-weight="700" letter-spacing="3" text-anchor="middle">16-BIT COMMON SYSTEM BUS</text>
+
+        <!-- HARDWARE BLOCKS (TOP ROW) -->
+        <!-- Program Counter (PC) -->
+        <g id="block_PC">
+          <rect x="70" y="30" width="110" height="60" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2" class="hw-box" />
+          <text x="125" y="55" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">PC</text>
+          <text x="125" y="75" fill="#94a3b8" font-size="10" text-anchor="middle">Prog Counter</text>
+        </g>
+
+        <!-- Memory Address Register (MAR) -->
+        <g id="block_MAR">
+          <rect x="240" y="30" width="110" height="60" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2" class="hw-box" />
+          <text x="295" y="55" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">MAR</text>
+          <text x="295" y="75" fill="#94a3b8" font-size="10" text-anchor="middle">Address Reg</text>
+        </g>
+
+        <!-- Main Memory (RAM) -->
+        <g id="block_MEM">
+          <rect x="410" y="20" width="130" height="80" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2" class="hw-box" />
+          <text x="475" y="55" fill="#38bdf8" font-size="14" font-weight="bold" text-anchor="middle">MEMORY</text>
+          <text x="475" y="75" fill="#94a3b8" font-size="10" text-anchor="middle">(RAM 4K x 16)</text>
+        </g>
+
+        <!-- Memory Data Register (MDR) -->
+        <g id="block_MDR">
+          <rect x="600" y="30" width="110" height="60" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2" class="hw-box" />
+          <text x="655" y="55" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">MDR</text>
+          <text x="655" y="75" fill="#94a3b8" font-size="10" text-anchor="middle">Data Register</text>
+        </g>
+
+        <!-- HARDWARE BLOCKS (BOTTOM ROW) -->
+        <!-- Instruction Register (IR) -->
+        <g id="block_IR">
+          <rect x="70" y="220" width="120" height="65" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2" class="hw-box" />
+          <text x="130" y="248" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">IR</text>
+          <text x="130" y="268" fill="#94a3b8" font-size="10" text-anchor="middle">Instruction Reg</text>
+        </g>
+
+        <!-- Hardwired Control Unit -->
+        <g id="block_CU">
+          <rect x="250" y="220" width="220" height="65" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-dasharray="4" stroke-width="2" class="hw-box" />
+          <text x="360" y="246" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">HARDWIRED CONTROL UNIT</text>
+          <text x="360" y="266" fill="#94a3b8" font-size="10" text-anchor="middle">Combinational Gate Logic</text>
+        </g>
+
+        <!-- Arithmetic Logic Unit (ALU) -->
+        <g id="block_ALU">
+          <polygon points="560,220 660,220 640,285 580,285" fill="#1e293b" stroke="#334155" stroke-width="2" class="hw-box" />
+          <text x="610" y="252" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">ALU</text>
+        </g>
+
+        <!-- Accumulator (AC) -->
+        <g id="block_AC">
+          <rect x="730" y="220" width="120" height="65" rx="8" fill="#1e293b" stroke="#334155" stroke-width="2" class="hw-box" />
+          <text x="790" y="248" fill="#f8fafc" font-size="13" font-weight="bold" text-anchor="middle">AC</text>
+          <text x="790" y="268" fill="#94a3b8" font-size="10" text-anchor="middle">Accumulator</text>
+        </g>
+
+        <!-- INTERCONNECTING BUS & SIGNAL WIRES -->
+        <!-- PC to Bus -->
+        <path id="wire_PC_bus" d="M 125 90 L 125 145" class="wire" marker-end="url(#arrow)" />
+        <!-- Bus to MAR -->
+        <path id="wire_bus_MAR" d="M 295 145 L 295 90" class="wire" marker-end="url(#arrow)" />
+        <!-- MAR to MEM Address lines -->
+        <path id="wire_MAR_MEM" d="M 350 60 L 410 60" class="wire" marker-end="url(#arrow)" />
+        <!-- MEM to MDR Data lines -->
+        <path id="wire_MEM_MDR" d="M 540 60 L 600 60" class="wire" marker-end="url(#arrow)" />
+        <!-- MDR to Bus -->
+        <path id="wire_MDR_bus" d="M 655 90 L 655 145" class="wire" marker-end="url(#arrow)" />
+        <!-- Bus to IR -->
+        <path id="wire_bus_IR" d="M 130 169 L 130 220" class="wire" marker-end="url(#arrow)" />
+        <!-- IR to Control Unit -->
+        <path id="wire_IR_CU" d="M 190 252 L 250 252" class="wire" marker-end="url(#arrow)" />
+        <!-- MDR to ALU -->
+        <path id="wire_bus_ALU" d="M 610 169 L 610 220" class="wire" marker-end="url(#arrow)" />
+        <!-- ALU to AC -->
+        <path id="wire_ALU_AC" d="M 645 252 L 730 252" class="wire" marker-end="url(#arrow)" />
+        <!-- AC to Bus (for Store) -->
+        <path id="wire_AC_bus" d="M 790 220 L 790 169" class="wire" marker-end="url(#arrow)" />
+      </svg>
+    </div>
+  </div>
 
       <label>Opcode Decoder Output Lines (q1 to q5):</label>
       <div class="opcode-lines">
