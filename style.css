@@ -349,3 +349,49 @@ button.btn-danger:hover {
 .log-desc {
   color: var(--text-muted);
 }
+
+/* Interactive Diagram Styling */
+.diagram-wrapper {
+  background: #020617;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+svg#datapathSvg {
+  width: 100%;
+  max-height: 340px;
+}
+
+.wire {
+  stroke: #475569;
+  stroke-width: 2.5;
+  fill: none;
+  stroke-dasharray: 6 3;
+  transition: all 0.3s ease;
+}
+
+.wire.active {
+  stroke: var(--accent-active);
+  stroke-width: 3.5;
+  filter: url(#glow);
+  marker-end: url(#arrow-active);
+  animation: wireFlow 0.8s linear infinite;
+}
+
+@keyframes wireFlow {
+  from { stroke-dashoffset: 18; }
+  to { stroke-dashoffset: 0; }
+}
+
+.hw-box {
+  transition: all 0.3s ease;
+}
+
+.hw-box.active {
+  stroke: var(--accent-active);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 8px var(--accent-active-glow));
+}
