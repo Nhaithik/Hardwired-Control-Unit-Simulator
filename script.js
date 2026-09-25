@@ -40,6 +40,7 @@ function logMessage(timing, microOp, detail) {
   logTerminal.scrollTop = logTerminal.scrollHeight;
 }
 
+
 function updateSimulation() {
   const currentInst = INSTRUCTIONS[instSelect.value];
   rawIrDisplay.textContent = currentInst.raw;
@@ -57,18 +58,22 @@ function updateSimulation() {
   Object.keys(INSTRUCTIONS).forEach(instKey => {
     const item = INSTRUCTIONS[instKey];
     const el = document.getElementById(item.line);
-    const isActive = (instKey === instSelect.value) && (step >= 2); // Opcode decoded at T2
+    const isActive = (instKey === instSelect.value) && (step >= 2);
     el.classList.toggle('active', isActive);
     el.querySelector('.state-val').textContent = isActive ? '1 (HIGH)' : '0';
   });
 
-  // Clear all active signal indicators & equations
+  // Clear previous signals, equations, and diagram elements
   ALL_SIGNALS.forEach(sig => document.getElementById(sig).classList.remove('active'));
   ALL_EQUATIONS.forEach(eq => document.getElementById(eq).classList.remove('active'));
+  document.querySelectorAll('.wire').forEach(w => w.classList.remove('active'));
+  document.querySelectorAll('.hw-box').forEach(b => b.classList.remove('active'));
 
-  // Active Control Equations & Signals logic (Boolean combinational block)
+  // Active Control Equations, Signals & Diagram highlights
   let activeSignals = [];
   let activeEqs = [];
+  let activeWires = [];
+  let activeBlocks = [];
   let microOp = "";
   let detail = "";
 
@@ -76,17 +81,23 @@ function updateSimulation() {
     // T0: MAR <- PC
     activeSignals = ['sig_PC_out', 'sig_MAR_in'];
     activeEqs = ['eq_fetch1'];
+    activeWires = ['wire_PC_bus', 'wire_bus_MAR'];
+    activeBlocks = ['block_PC', 'block_MAR'];
     microOp = "MAR ← PC";
     detail = "Move contents of Program Counter to Memory Address Register for instruction fetch.";
   } else if (step === 1) {
     // T1: IR <- M[MAR], PC <- PC + 1
     activeSignals = ['sig_MEM_read', 'sig_MDR_out', 'sig_IR_in', 'sig_PC_inc'];
     activeEqs = ['eq_fetch2'];
+    activeWires = ['wire_MAR_MEM', 'wire_MEM_MDR', 'wire_MDR_bus', 'wire_bus_IR'];
+    activeBlocks = ['block_MEM', 'block_MDR', 'block_IR', 'block_PC'];
     microOp = "IR ← M[MAR], PC ← PC + 1";
     detail = "Fetch machine code into IR; increment Program Counter to point to next instruction.";
   } else if (step === 2) {
-    // T2: Decode Opcode
+    // T2: Opcode Decode
     activeEqs = ['eq_decode'];
+    activeWires = ['wire_IR_CU'];
+    activeBlocks = ['block_IR', 'block_CU'];
     microOp = `Opcode Decoded: ${currentInst.name}`;
     detail = `Opcode bits (${currentInst.opcode}) decoded; line ${currentInst.line.replace('q_', 'q')} driven HIGH.`;
   } else if (step === 3) {
@@ -94,37 +105,49 @@ function updateSimulation() {
     if (currentInst.name === 'JMP') {
       activeSignals = ['sig_PC_load', 'sig_SC_clear'];
       activeEqs = ['eq_jmp', 'eq_sc_clr'];
+      activeWires = ['wire_IR_CU'];
+      activeBlocks = ['block_CU', 'block_PC'];
       microOp = "PC ← IR[11:0], SC ← 0";
       detail = "Load target address into PC unconditionally; Reset Sequence Counter.";
     } else {
       activeSignals = ['sig_MAR_in'];
       activeEqs = ['eq_mem'];
+      activeWires = ['wire_bus_MAR'];
+      activeBlocks = ['block_MAR'];
       microOp = "MAR ← IR[11:0]";
       detail = "Transfer operand address from IR address field to MAR.";
     }
   } else if (step === 4) {
-    // T4: Execute Phase for Memory/ALU operations
+    // T4: Execute Phase
     activeSignals.push('sig_SC_clear');
     activeEqs.push('eq_sc_clr');
 
     if (currentInst.name === 'ADD') {
       activeSignals.push('sig_MEM_read', 'sig_ALU_add', 'sig_AC_load');
       activeEqs.push('eq_alu_add');
+      activeWires = ['wire_MAR_MEM', 'wire_MEM_MDR', 'wire_MDR_bus', 'wire_bus_ALU', 'wire_ALU_AC'];
+      activeBlocks = ['block_MEM', 'block_MDR', 'block_ALU', 'block_AC'];
       microOp = "AC ← AC + M[MAR], SC ← 0";
       detail = "Read data operand from memory, compute addition via ALU, store sum into AC; reset SC.";
     } else if (currentInst.name === 'SUB') {
       activeSignals.push('sig_MEM_read', 'sig_ALU_sub', 'sig_AC_load');
       activeEqs.push('eq_alu_sub');
+      activeWires = ['wire_MAR_MEM', 'wire_MEM_MDR', 'wire_MDR_bus', 'wire_bus_ALU', 'wire_ALU_AC'];
+      activeBlocks = ['block_MEM', 'block_MDR', 'block_ALU', 'block_AC'];
       microOp = "AC ← AC - M[MAR], SC ← 0";
       detail = "Read data operand from memory, execute subtraction via ALU, store difference into AC; reset SC.";
     } else if (currentInst.name === 'LOAD') {
       activeSignals.push('sig_MEM_read', 'sig_MDR_out', 'sig_AC_load');
       activeEqs.push('eq_load');
+      activeWires = ['wire_MAR_MEM', 'wire_MEM_MDR', 'wire_MDR_bus', 'wire_ALU_AC'];
+      activeBlocks = ['block_MEM', 'block_MDR', 'block_AC'];
       microOp = "AC ← M[MAR], SC ← 0";
       detail = "Read memory word directly into Accumulator; reset SC.";
     } else if (currentInst.name === 'STORE') {
       activeSignals.push('sig_MEM_write');
       activeEqs.push('eq_store');
+      activeWires = ['wire_AC_bus', 'wire_MAR_MEM'];
+      activeBlocks = ['block_AC', 'block_MEM'];
       microOp = "M[MAR] ← AC, SC ← 0";
       detail = "Assert MEM_write signal to transfer contents of AC into selected memory cell; reset SC.";
     }
@@ -140,11 +163,20 @@ function updateSimulation() {
     if (el) el.classList.add('active');
   });
 
+  // Apply SVG datapath highlights & animated wire pulses
+  activeWires.forEach(wireId => {
+    const el = document.getElementById(wireId);
+    if (el) el.classList.add('active');
+  });
+  activeBlocks.forEach(blockId => {
+    const box = document.querySelector(`#${blockId} .hw-box`);
+    if (box) box.classList.add('active');
+  });
+
   if (microOp !== "") {
     logMessage(`T${step}`, microOp, detail);
   }
 }
-
 // Step clock pulse
 function clockPulse() {
   const currentInst = INSTRUCTIONS[instSelect.value];
